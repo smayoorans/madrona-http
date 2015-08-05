@@ -1,4 +1,4 @@
-package hms.globe.connector.http.common;
+package org.madrona.http.common;
 
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;

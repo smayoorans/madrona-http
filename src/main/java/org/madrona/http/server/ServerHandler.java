@@ -1,4 +1,4 @@
-package hms.globe.connector.http.server;
+package org.madrona.http.server;
 
 import org.jboss.netty.handler.codec.http.HttpRequest;
 

@@ -1,18 +1,14 @@
-package hms.globe.connector.http;
+package org.madrona.http;
 
-import hms.globe.connector.http.client.ClientHandler;
-import hms.globe.connector.http.client.HttpClient;
-import hms.globe.connector.http.client.NettyClient;
+import org.madrona.http.client.ClientHandler;
+import org.madrona.http.client.HttpClient;
+import org.madrona.http.client.NettyClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jboss.netty.channel.Channel;
 import org.jboss.netty.handler.codec.http.*;
 
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 

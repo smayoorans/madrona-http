@@ -1,4 +1,4 @@
-package hms.globe.connector.http.service;
+package org.madrona.http.service;
 
 
 

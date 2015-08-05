@@ -1,8 +1,8 @@
-package hms.globe.connector.http;
+package org.madrona.http;
 
-import hms.globe.connector.http.server.NettyServer;
-import hms.globe.connector.http.server.ServerListener;
-import hms.globe.connector.http.server.ServerHandler;
+import org.madrona.http.server.NettyServer;
+import org.madrona.http.server.ServerListener;
+import org.madrona.http.server.ServerHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jboss.netty.handler.codec.http.HttpRequest;

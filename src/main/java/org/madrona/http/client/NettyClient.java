@@ -1,6 +1,6 @@
-package hms.globe.connector.http.client;
+package org.madrona.http.client;
 
-import hms.globe.connector.http.common.MessageCounter;
+import org.madrona.http.common.MessageCounter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jboss.netty.bootstrap.ClientBootstrap;

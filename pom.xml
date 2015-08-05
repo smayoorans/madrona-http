@@ -9,7 +9,6 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-
         <log4j2.version>2.1</log4j2.version>
         <netty.version>3.6.6.Final</netty.version>
     </properties>

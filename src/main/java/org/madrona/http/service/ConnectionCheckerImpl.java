@@ -1,6 +1,5 @@
-package hms.globe.connector.http.service;
+package org.madrona.http.service;
 
-import hms.globe.connector.http.client.HttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
