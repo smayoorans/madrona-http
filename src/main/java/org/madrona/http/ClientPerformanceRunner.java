@@ -1,8 +1,8 @@
 package org.madrona.http;
 
-import org.madrona.http.client.ClientHandler;
+import org.madrona.http.client.NettyHttpClient;
+import org.madrona.http.client.ResponseHandler;
 import org.madrona.http.client.HttpClient;
-import org.madrona.http.client.NettyClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jboss.netty.handler.codec.http.*;
@@ -27,12 +27,12 @@ public class ClientPerformanceRunner {
 
     private int noOfConnections = 3;
 
-    private HttpClient client;
+    private NettyHttpClient client;
 
 
-    public void init(final String host, final int port) {
-        client = new NettyClient(new DummyClientHandler());
-        client.createConnection(host, port, noOfConnections);
+    public void init() {
+        client = new NettyHttpClient();
+        client.init(new DummyResponseHandler());
     }
 
     private void send(String message) {
@@ -53,7 +53,7 @@ public class ClientPerformanceRunner {
     public static void main(String[] args) {
         final ClientPerformanceRunner runner = new ClientPerformanceRunner();
 
-        runner.init(SERVER_HOST, SERVER_PORT);
+        runner.init();
 
 
         runner.executorService.scheduleAtFixedRate(new Runnable() {
@@ -66,12 +66,12 @@ public class ClientPerformanceRunner {
     }
 
 
-    public class DummyClientHandler implements ClientHandler {
+    public class DummyResponseHandler implements ResponseHandler {
 
         @Override
         public void messageReceived(HttpResponse response) {
             LOGGER.debug("==================RESPONSE RECEIVED=========================");
-            LOGGER.info("Response [{}] received from the server", response);
+//            LOGGER.info("Response [{}] received from the server", response);
         }
 
         @Override

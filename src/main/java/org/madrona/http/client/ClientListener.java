@@ -11,12 +11,15 @@ public class ClientListener extends SimpleChannelUpstreamHandler {
 
     private static final Logger logger = LogManager.getLogger(ClientListener.class);
 
-    private final ClientHandler clientHandler;
-
+    private final ResponseHandler responseHandler;
     private final AtomicInteger counter = new AtomicInteger();
+    private String channelId;
+    private NettyHttpClient nettyHttpClient;
 
-    public ClientListener(ClientHandler clientHandler) {
-        this.clientHandler = clientHandler;
+    public ClientListener(ResponseHandler responseHandler, String channelId, NettyHttpClient nettyHttpClient) {
+        this.nettyHttpClient = nettyHttpClient;
+        this.channelId = channelId;
+        this.responseHandler = responseHandler;
     }
 
     @Override
@@ -27,8 +30,8 @@ public class ClientListener extends SimpleChannelUpstreamHandler {
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         this.counter.incrementAndGet();
-        HttpResponse response  = (HttpResponse) e.getMessage();
-        this.clientHandler.messageReceived(response);
+        HttpResponse response = (HttpResponse) e.getMessage();
+        this.responseHandler.messageReceived(response);
     }
 
     @Override
@@ -38,9 +41,16 @@ public class ClientListener extends SimpleChannelUpstreamHandler {
     }
 
     @Override
+    public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        logger.error("Channel disconnected  [{}]", channelId);
+        this.nettyHttpClient.notifyChannelTermination(this.channelId);
+        super.channelDisconnected(ctx, e);
+    }
+
+    @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
         logger.error("Error occurred in client  : " + e.getCause());
-        this.clientHandler.notifyError();
+        this.responseHandler.notifyError();
         super.exceptionCaught(ctx, e);
     }
 }

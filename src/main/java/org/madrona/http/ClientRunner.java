@@ -1,8 +1,7 @@
 package org.madrona.http;
 
-import org.madrona.http.client.ClientHandler;
-import org.madrona.http.client.HttpClient;
-import org.madrona.http.client.NettyClient;
+import org.madrona.http.client.NettyHttpClient;
+import org.madrona.http.client.ResponseHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jboss.netty.handler.codec.http.*;
@@ -24,12 +23,12 @@ public class ClientRunner {
 
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(2);
 
-    private HttpClient client;
+    private NettyHttpClient client;
 
 
     public void init(final String host, final int port) {
-        client = new NettyClient(new DummyClientHandler());
-        client.createConnection(host, port, 3);
+        client = new NettyHttpClient();
+        client.init(new DummyResponseHandler());
     }
 
     private void send(String message) {
@@ -64,7 +63,7 @@ public class ClientRunner {
     }
 
 
-    public class DummyClientHandler implements ClientHandler {
+    public class DummyResponseHandler implements ResponseHandler {
 
         @Override
         public void messageReceived(HttpResponse response) {

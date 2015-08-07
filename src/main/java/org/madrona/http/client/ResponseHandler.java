@@ -3,7 +3,7 @@ package org.madrona.http.client;
 
 import org.jboss.netty.handler.codec.http.HttpResponse;
 
-public interface ClientHandler {
+public interface ResponseHandler {
 
     void messageReceived(HttpResponse response);
 
