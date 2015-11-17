@@ -1,11 +1,10 @@
 package org.madrona.http.server;
 
-import org.jboss.netty.handler.codec.http.HttpRequest;
 
 public interface ServerHandler {
 
-    void messageReceived(ServerListener serverListener, HttpRequest request);
+    void messageReceived(HttpServerHandler httpServerHandler);
 
-    void connectionOpen(ServerListener serverListener);
+    void connectionOpen(HttpServerHandler httpServerHandler);
 
 }

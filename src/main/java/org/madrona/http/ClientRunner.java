@@ -1,10 +1,11 @@
 package org.madrona.http;
 
+import io.netty.handler.codec.http.*;
 import org.madrona.http.client.NettyHttpClient;
-import org.madrona.http.client.ResponseHandler;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jboss.netty.handler.codec.http.*;
+
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -28,7 +29,7 @@ public class ClientRunner {
 
     public void init(final String host, final int port) {
         client = new NettyHttpClient();
-        client.init(new DummyResponseHandler());
+        client.init();
     }
 
     private void send(String message) {
@@ -40,9 +41,6 @@ public class ClientRunner {
         String uri = "http://" + SERVER_HOST + ":" + SERVER_PORT + "/" + message;
 
         HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, uri);
-        request.setHeader(HttpHeaders.Names.HOST, SERVER_HOST);
-        request.setHeader(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
-        request.setHeader(HttpHeaders.Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
         return request;
     }
 
@@ -53,27 +51,8 @@ public class ClientRunner {
 
         runner.send("message");
 
-        /*runner.executorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                runner.send("message");
-            }
-        }, 1, 1, TimeUnit.SECONDS);*/
 
     }
 
 
-    public class DummyResponseHandler implements ResponseHandler {
-
-        @Override
-        public void messageReceived(HttpResponse response) {
-            LOGGER.debug("==================RESPONSE RECEIVED=========================");
-            LOGGER.info("Response [{}] received from the server" , response);
-        }
-
-        @Override
-        public void notifyError() {
-            LOGGER.error("Error occurred in client");
-        }
-    }
 }

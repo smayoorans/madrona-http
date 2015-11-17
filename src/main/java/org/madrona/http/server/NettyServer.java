@@ -1,15 +1,17 @@
 package org.madrona.http.server;
 
+import io.netty.bootstrap.ChannelFactory;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.madrona.http.common.MessageCounter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.*;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
-import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
-import org.jboss.netty.handler.logging.LoggingHandler;
-import org.jboss.netty.logging.InternalLogLevel;
+
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
@@ -33,48 +35,42 @@ public class NettyServer {
     private Channel channel;
 
 
-    public NettyServer(int port, ServerHandler listener) {
+    public NettyServer(int port, ServerHandler serverHandler) {
         this.port = port;
-        this.listener = listener;
+        this.listener = serverHandler;
     }
 
     public boolean start() {
         LOGGER.info("Starting the HTTP Server on port [{}]", port);
-        Executor bossPool = Executors.newFixedThreadPool(4);
-        Executor workerPool = Executors.newFixedThreadPool(4);
-        ChannelFactory factory = new NioServerSocketChannelFactory(bossPool, workerPool);
 
-        this.bootstrap = new ServerBootstrap(factory);
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        try {
+            ServerBootstrap b = new ServerBootstrap();
+            b.group(bossGroup, workerGroup)
+                    .channel(NioServerSocketChannel.class)
+                    .handler(new LoggingHandler(LogLevel.INFO))
+                    .childHandler(new HttpServerInitializer());
 
-        this.bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-            @Override
-            public ChannelPipeline getPipeline() throws Exception {
-                return Channels.pipeline(
-                        new HttpRequestDecoder(),
-                        new HttpResponseEncoder(),
-                        new LoggingHandler(InternalLogLevel.INFO),
-                        new MessageCounter(),
-                        new ServerListener(listener));
-            }
-        });
+            channel = b.bind(port).sync().channel();
 
-        channel = this.bootstrap.bind(new InetSocketAddress(port));
-
-        if (channel.isBound()) {
-            LOGGER.info("HTTP Server bound to port : [{}]", port);
             return true;
-        } else {
-            LOGGER.info("HTTP Server failed to bind to port :[{}]", port);
-            this.bootstrap.releaseExternalResources();
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
             return false;
         }
+
+
+
     }
 
     public void stop() {
         try {
             LOGGER.info("Stopping http server, which is running on port [{}]", port);
-            this.channel.close();
-            this.bootstrap.releaseExternalResources();
+            channel.closeFuture().sync();
+//            bossGroup.shutdownGracefully();
+//            workerGroup.shutdownGracefully();
             LOGGER.info("Stopped http server, which was running on port [{}]", port);
         } catch (Exception ex) {
             LOGGER.error("Error occurred while stopping the server");

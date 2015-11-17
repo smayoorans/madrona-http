@@ -1,9 +1,7 @@
 package org.madrona.http.client;
 
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.handler.codec.http.HttpRequest;
 
-import java.util.List;
+import io.netty.handler.codec.http.HttpRequest;
 
 /**
  * Http Client

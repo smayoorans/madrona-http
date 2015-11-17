@@ -1,13 +1,13 @@
 package org.madrona.http.common;
 
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
+
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.HttpObject;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MessageCounter extends SimpleChannelHandler {
+public class MessageCounter extends SimpleChannelInboundHandler<HttpObject> {
 
     private final AtomicLong writtenMessages;
     private final AtomicLong readMessages;
@@ -18,6 +18,11 @@ public class MessageCounter extends SimpleChannelHandler {
     }
 
     @Override
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpObject httpObject) throws Exception {
+        this.readMessages.incrementAndGet();
+    }
+
+   /* @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         this.readMessages.incrementAndGet();
         super.messageReceived(ctx, e);
@@ -33,7 +38,7 @@ public class MessageCounter extends SimpleChannelHandler {
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         super.channelClosed(ctx, e);
         System.out.println(ctx.getChannel() + " -> sent: " + this.getWrittenMessages() + ", recv: " + this.getReadMessages());
-    }
+    }*/
 
     public long getWrittenMessages() {
         return writtenMessages.get();
