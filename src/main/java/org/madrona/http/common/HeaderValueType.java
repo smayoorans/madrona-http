@@ -1,4 +1,4 @@
-package org.madrona.http.client;
+package org.madrona.http.common;
 
 /**
  * Base interface for things that convert an HTTP header to an appropriate

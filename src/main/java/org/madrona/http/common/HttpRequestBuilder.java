@@ -1,4 +1,4 @@
-package org.madrona.http.client;
+package org.madrona.http.common;
 
 /**
  * Builds Http Request, allows for adding listeners for response events

@@ -1,4 +1,4 @@
-package org.madrona.http.client;
+package org.madrona.http.common;
 
 /**
  * Callback which can be passed some object which cannot be computed on the

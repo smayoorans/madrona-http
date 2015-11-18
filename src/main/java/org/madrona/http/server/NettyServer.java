@@ -42,7 +42,7 @@ public class NettyServer {
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.DEBUG))
-                    .childHandler(new HttpServerInitializer());
+                    .childHandler(new ServerInitializer());
 
             channel = bootstrap.bind(port).channel();
             LOGGER.info("Server bound on port [{}]", port);
