@@ -2,7 +2,7 @@
 <Configuration status="WARN" monitorInterval="60">
 
     <Properties>
-        <Property name="log-path">logs</Property>
+        <Property name="log-path">/hms/logs/madrona-http</Property>
         <Property name="log-pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level%x %c{1} [%t] - %msg%n</Property>
         <Property name="log-rotate-pattern">%d{yyyy-MM-dd}.log</Property>
     </Properties>
@@ -13,38 +13,10 @@
             <PatternLayout pattern="${log-pattern}"/>
         </Console>
 
-        <RollingRandomAccessFile name="trace-log" fileName="${log-path}/netty-connector-trace.log" filePattern="${log-path}/trace-${log-rotate-pattern}">
-            <PatternLayout pattern="${log-pattern}"/>
-            <Policies>
-                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-            </Policies>
-            <DefaultRolloverStrategy max="7"/>
-        </RollingRandomAccessFile>
-
-        <RollingRandomAccessFile name="info-log" fileName="${log-path}/netty-connector-info.log" filePattern="${log-path}/info-${log-rotate-pattern}">
-            <PatternLayout pattern="${log-pattern}"/>
-            <Policies>
-                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-            </Policies>
-            <DefaultRolloverStrategy max="7"/>
-        </RollingRandomAccessFile>
-
-        <RollingFile name="error-log" fileName="${log-path}/netty-connector-error.log" filePattern="${log-path}/error-${log-rotate-pattern}">
-            <PatternLayout pattern="${log-pattern}"/>
-            <Policies>
-                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-            </Policies>
-            <DefaultRolloverStrategy max="7"/>
-        </RollingFile>
-
     </Appenders>
 
     <Loggers>
-
         <Root level="debug" additivity="false">
-            <!--<appender-ref ref="trace-log" level="trace"/>-->
-            <!--<appender-ref ref="info-log" level="info"/>-->
-            <!--<appender-ref ref="error-log" level="error"/>-->
             <appender-ref ref="console-log" level="debug"/>
         </Root>
     </Loggers>

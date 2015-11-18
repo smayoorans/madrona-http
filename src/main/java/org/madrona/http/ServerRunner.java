@@ -1,10 +1,8 @@
 package org.madrona.http;
 
-import org.madrona.http.server.NettyServer;
-import org.madrona.http.server.HttpServerHandler;
-import org.madrona.http.server.ServerHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.madrona.http.server.NettyServer;
 
 
 /**
@@ -17,24 +15,27 @@ public class ServerRunner {
 
     private static final Logger LOGGER = LogManager.getLogger(ServerRunner.class);
 
-    private static final int PORT = 1234;
+    private static final int PORT = 8080;
+
+    private NettyServer server;
 
     public static void main(String[] args) {
 
-        final NettyServer server = new NettyServer(PORT, null);
+        ServerRunner serverRunner = new ServerRunner();
 
-        if (!server.start()) {
+        serverRunner.server = new NettyServer(PORT);
+
+        if (!serverRunner.server.start()) {
             return;
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                server.stop();
+                serverRunner.server.shutdown();
             }
         });
     }
-
 
 
 }
