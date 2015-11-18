@@ -10,14 +10,12 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.HttpHeaders.Names;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-
 import java.net.URI;
+import java.time.Duration;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -34,21 +32,27 @@ public class NettyClient {
 
     private Channel channel;
 
+    private int timeoutInMillis = 0;
+
+    private ResponseNotifier responseNotifier;
+
     public void init() {
         LOGGER.info("Initializing Netty Http Client");
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
-        LOGGER.info("Number of worker threads " + workerThreads);
         EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
 
         try {
             bootstrap = new Bootstrap();
-//            bootstrap.option(ChannelOption.AUTO_CLOSE, true);
+            bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000);
+            if (timeoutInMillis != 0) {
+                bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutInMillis);
+            }
 
 
             bootstrap.group(workerGroup)
                     .channel(NioSocketChannel.class)
-                    .handler(new ClientInitializer());
+                    .handler(new ClientInitializer(responseNotifier));
 
             /** Make the connection attempt */
             channel = bootstrap.connect(HOST, PORT).channel();
@@ -60,14 +64,25 @@ public class NettyClient {
 
     }
 
-    private static HttpRequest createRequest(String uri) {
-   /*     String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
+    public boolean send(final String uri) {
+        LOGGER.info("Sending http request [{}] ", uri);
+        try {
+            HttpRequest request = createRequest(new URI(uri));
+            channel.writeAndFlush(request);
+        } catch (Exception e) {
+            LOGGER.debug("Error occurred in request {} ", e);
+        }
+        return true;
+    }
+
+
+    private static HttpRequest createRequest(URI uri) {
+        String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
         if (StringUtils.isNotBlank(uri.getRawQuery())) {
             url += "?" + uri.getRawQuery();
         }
-*/
-        HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, uri);
-//        request.headers().add(Names.HOST, uri.getHost());
+        HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
+        request.headers().add(Names.HOST, uri.getHost());
         request.headers().add(Names.CONNECTION, HttpHeaders.Values.CLOSE);
         request.headers().add(Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
         return request;
@@ -90,23 +105,12 @@ public class NettyClient {
         LOGGER.info("Stopped Netty Http Client");
     }
 
-
-    public boolean send(final String uri) {
-        LOGGER.info("Sending http request [{}] ", uri);
-        try {
-            HttpRequest request = createRequest(uri);
-            writeToChannel(request);
-        } catch (Exception e) {
-            LOGGER.debug("Error occurred in request");
-        }
-        return true;
+    public void setTimeoutInMillis(int timeoutInMillis) {
+        this.timeoutInMillis = timeoutInMillis;
     }
 
-    private boolean writeToChannel(HttpRequest request) {
-        ChannelFuture write = channel.writeAndFlush(request);
-        boolean done = write.isDone();
-        System.out.println("is done" + write.cause());
-        return done;
+    public void setResponseNotifier(ResponseNotifier responseNotifier) {
+        this.responseNotifier = responseNotifier;
     }
 
     public static class TF implements ThreadFactory {

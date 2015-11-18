@@ -14,8 +14,10 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
 
     private static final Logger LOGGER = LogManager.getLogger(ResponseHandler.class);
 
-    public ResponseHandler() {
+    private ResponseNotifier responseNotifier;
 
+    public ResponseHandler(ResponseNotifier notifier) {
+        responseNotifier = notifier;
     }
 
     @Override
@@ -29,8 +31,8 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
             System.err.println();
 
             if (!response.headers().isEmpty()) {
-                for (String name: response.headers().names()) {
-                    for (String value: response.headers().getAll(name)) {
+                for (String name : response.headers().names()) {
+                    for (String value : response.headers().getAll(name)) {
                         System.err.println("HEADER: " + name + " = " + value);
                     }
                 }
@@ -60,6 +62,8 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         cause.printStackTrace();
+        responseNotifier.networkErrorOccurred(cause);
         ctx.close();
     }
+
 }
