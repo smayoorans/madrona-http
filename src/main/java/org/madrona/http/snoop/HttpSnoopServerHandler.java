@@ -49,9 +49,9 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
         if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
 
-            if (HttpHeaders.is100ContinueExpected(request)) {
+      /*      if (HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
-            }
+            }*/
 
             buf.setLength(0);
             buf.append("WELCOME TO THE WILD WILD WEB SERVER\r\n");

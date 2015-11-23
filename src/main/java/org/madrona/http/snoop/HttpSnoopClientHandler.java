@@ -54,7 +54,7 @@ public class HttpSnoopClientHandler extends SimpleChannelInboundHandler<HttpObje
 
             if (content instanceof LastHttpContent) {
                 System.err.println("} END OF CONTENT");
-                ctx.close();
+//                ctx.close();
             }
         }
     }

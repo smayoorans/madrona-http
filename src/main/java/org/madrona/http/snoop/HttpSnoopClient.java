@@ -69,12 +69,18 @@ public final class HttpSnoopClient {
             // Prepare the HTTP request.
             HttpRequest request = new DefaultFullHttpRequest(
                     HttpVersion.HTTP_1_1, HttpMethod.GET, uri.getRawPath());
-            request.headers().set(HttpHeaders.Names.HOST, host);
-            request.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.CLOSE);
+            request.headers().set(HttpHeaders.Names.HOST, host+":"+port);
+            request.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
             request.headers().set(HttpHeaders.Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
 
 
             // Send the HTTP request.
+            ch.writeAndFlush(request);
+            Thread.sleep(1000l);
+            ch.writeAndFlush(request);
+            Thread.sleep(1000l);
+            ch.writeAndFlush(request);
+            Thread.sleep(1000l);
             ch.writeAndFlush(request);
 
             // Wait for the server to close the connection.
