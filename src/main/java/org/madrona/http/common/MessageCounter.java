@@ -18,27 +18,40 @@ public class MessageCounter extends SimpleChannelInboundHandler<HttpObject> {
     }
 
     @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        System.out.println("channel inactive");
+        super.channelInactive(ctx);
+    }
+
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        System.out.println("====================");
+        super.channelRead(ctx, msg);
+    }
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        System.out.println("Channel read complete");
+        super.channelReadComplete(ctx);
+    }
+
+    @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpObject httpObject) throws Exception {
+        System.out.println("Chaane readinf....");
         this.readMessages.incrementAndGet();
     }
 
-   /* @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        this.readMessages.incrementAndGet();
-        super.messageReceived(ctx, e);
+    @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        System.out.println(ctx.channel() + " -> sent: " + this.getWrittenMessages() + ", recv: " + this.getReadMessages());
+        super.channelUnregistered(ctx);
     }
 
     @Override
-    public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        this.writtenMessages.incrementAndGet();
-        super.writeRequested(ctx, e);
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        System.out.println(ctx.channel() + " -> sent: " + this.getWrittenMessages() + ", recv: " + this.getReadMessages());
+        super.channelWritabilityChanged(ctx);
     }
-
-    @Override
-    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-        super.channelClosed(ctx, e);
-        System.out.println(ctx.getChannel() + " -> sent: " + this.getWrittenMessages() + ", recv: " + this.getReadMessages());
-    }*/
 
     public long getWrittenMessages() {
         return writtenMessages.get();

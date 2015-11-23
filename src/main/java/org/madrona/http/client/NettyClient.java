@@ -15,6 +15,7 @@ import io.netty.handler.logging.LoggingHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.madrona.http.common.MessageCounter;
 
 import java.net.URI;
 import java.util.concurrent.ThreadFactory;
@@ -36,17 +37,15 @@ public class NettyClient {
     public void init(final String host, final int port) {
         LOGGER.info("Initializing Netty Http Client");
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
-//        EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
 
         try {
             bootstrap = new Bootstrap();
-  /*          bootstrap.option(ChannelOption.TCP_NODELAY, true);
+            bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000);
             if (timeoutInMillis != 0) {
                 bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutInMillis);
             }
-*/
             bootstrap.group(workerGroup)
                     .channel(NioSocketChannel.class)
                     .handler(new ClientInitializer(responseNotifier));
@@ -67,11 +66,12 @@ public class NettyClient {
     }
 
     public boolean send(final String uri) {
-        LOGGER.info("Sending http request [{}] ", uri);
+        LOGGER.debug("Sending http request [{}] ", uri);
         try {
             HttpRequest request = createRequest(new URI(uri));
-            ChannelFuture future = channel.writeAndFlush(request);
-            System.out.println("=====>" + future.sync());
+            channel.writeAndFlush(request);
+//            ChannelFuture future = channel.writeAndFlush(request);
+//            System.out.println("=====>" + future.sync().isSuccess());
         } catch (Exception e) {
             LOGGER.error("Error occurred in request {} ", e);
         }
@@ -84,13 +84,10 @@ public class NettyClient {
         if (StringUtils.isNotBlank(uri.getRawQuery())) {
             url += "?" + uri.getRawQuery();
         }
-//        System.out.println("url " + url);
         HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
         request.headers().add(Names.HOST, uri.getHost()+":"+uri.getPort());
         request.headers().add(Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         request.headers().add(Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
-        System.out.println("======request===");
-        System.out.println("======request===" + request);
         return request;
     }
 

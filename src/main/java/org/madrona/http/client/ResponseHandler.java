@@ -7,6 +7,8 @@ import io.netty.util.CharsetUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * Http response handler which implements SimpleChannelInboundHandler that process incoming data.
  */
@@ -14,61 +16,62 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
 
     private static final Logger LOGGER = LogManager.getLogger(ResponseHandler.class);
 
+    private final AtomicLong writtenMessages;
+    private final AtomicLong readMessages;
+
+
     private ResponseNotifier responseNotifier;
 
     public ResponseHandler(ResponseNotifier notifier) {
+        this.writtenMessages = new AtomicLong();
+        this.readMessages = new AtomicLong();
         responseNotifier = notifier;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
-        LOGGER.info("Channel0 Reading message {} ", msg.getClass());
+        this.readMessages.incrementAndGet();
+
+        LOGGER.debug("Channel Reading message {} ", msg.getClass());
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
 
-            System.err.println("STATUS: " + response.getStatus());
-            System.err.println("VERSION: " + response.getProtocolVersion());
-            System.err.println();
-
-            if (!response.headers().isEmpty()) {
-                for (String name : response.headers().names()) {
-                    for (String value : response.headers().getAll(name)) {
-                        System.err.println("HEADER: " + name + " = " + value);
-                    }
-                }
-                System.err.println();
-            }
+            this.responseNotifier.messageReceived(response);
 
             if (HttpHeaders.isTransferEncodingChunked(response)) {
-                System.err.println("CHUNKED CONTENT {");
+//                System.err.println("CHUNKED CONTENT {");
             } else {
-                System.err.println("CONTENT {");
+//                System.err.println("CONTENT {");
             }
         }
         if (msg instanceof HttpContent) {
             HttpContent content = (HttpContent) msg;
 
-            System.err.print(content.content().toString(CharsetUtil.UTF_8));
-            System.err.flush();
+//            System.err.print(content.content().toString(CharsetUtil.UTF_8));
+//            System.err.flush();
 
             if (content instanceof LastHttpContent) {
-                System.err.println("} END OF CONTENT");
-//                ctx.close();
+//                System.err.println("} END OF CONTENT");
             }
         }
-
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        cause.printStackTrace();
-        responseNotifier.networkErrorOccurred(cause);
-        ctx.close();
-        try {
-            super.exceptionCaught(ctx,cause);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public boolean acceptInboundMessage(Object msg) throws Exception {
+//        System.out.println("Accept in bound");
+        return super.acceptInboundMessage(msg);
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        responseNotifier.networkErrorOccurred(cause);
+        ctx.close();
+        super.exceptionCaught(ctx, cause);
+    }
+
+    @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        System.out.println("Channel unregistered  received response: " + readMessages.get()/2);
+        super.channelUnregistered(ctx);
+    }
 }

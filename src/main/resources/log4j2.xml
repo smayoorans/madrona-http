@@ -16,8 +16,8 @@
     </Appenders>
 
     <Loggers>
-        <Root level="debug" additivity="false">
-            <appender-ref ref="console-log" level="debug"/>
+        <Root level="info" additivity="false">
+            <appender-ref ref="console-log" level="info"/>
         </Root>
     </Loggers>
 

@@ -9,6 +9,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.madrona.http.common.MessageCounter;
 
 /**
  * Netty Http Server which receives the http requests.
@@ -36,7 +37,7 @@ public class NettyServer {
             // Configure the server.
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.INFO))
+                    .handler(new LoggingHandler(LogLevel.DEBUG))
                     .childHandler(new ServerInitializer());
 
             channel = bootstrap.bind(port).sync().channel();
@@ -52,7 +53,7 @@ public class NettyServer {
     public void shutdown() {
         try {
             LOGGER.info("Stopping http server, which is running on port [{}]", port);
-            channel.closeFuture().sync();
+            channel.close();
             bootstrap.group().shutdownGracefully();
             LOGGER.info("Stopped http server, which was running on port [{}]", port);
         } catch (Exception ex) {

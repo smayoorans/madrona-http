@@ -15,9 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 /**
@@ -26,20 +24,22 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private static final Logger LOGGER = LogManager.getLogger(ServerHandler.class);
+    /**
+     * Buffer that stores the response content
+     */
+    private final StringBuilder buf = new StringBuilder();
 
     private HttpRequest request;
-    /** Buffer that stores the response content */
-    private final StringBuilder buf = new StringBuilder();
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-        System.out.println("channel read completed..");
-//        ctx.flush();
+//        System.out.println("channel read completed..");
+        ctx.flush();
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-        LOGGER.info("Request received {}" + msg.getClass());
+        LOGGER.debug("Request received [{}] into server ", msg.getClass());
         if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
 
@@ -152,8 +152,14 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
 
     @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        LOGGER.info("Channel {} unregistered from the system {}", ctx.channel());
+        super.channelUnregistered(ctx);
+    }
+
+    @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        cause.printStackTrace();
+        LOGGER.error("Error occurred in netty server", cause.getCause());
         ctx.close();
     }
 }
