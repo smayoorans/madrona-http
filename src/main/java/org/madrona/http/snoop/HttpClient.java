@@ -28,12 +28,11 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.net.URI;
 
 /**
- * A simple HTTP client that prints out the content of the HTTP response to
- * {@link System#out} to test {@link HttpSnoopServer}.
+ * A simple HTTP client that prints out the content of the HTTP response.
  */
-public final class HttpSnoopClient {
+public final class HttpClient {
 
-    static final String URL = System.getProperty("url", "http://127.0.0.1:8080/");
+    private static final String URL = System.getProperty("url", "http://127.0.0.1:8082/");
 
     public static void main(String[] args) throws Exception {
         URI uri = new URI(URL);

@@ -36,7 +36,8 @@ public class NettyClient {
     public void init(final String host, final int port) {
         LOGGER.info("Initializing Netty Http Client");
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
-        EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
+//        EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
             bootstrap = new Bootstrap();
@@ -48,16 +49,15 @@ public class NettyClient {
 */
             bootstrap.group(workerGroup)
                     .channel(NioSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.DEBUG))
                     .handler(new ClientInitializer(responseNotifier));
 
             /** Make the connection attempt */
-            ChannelFuture future = bootstrap.connect(host, port).sync();
-            if(future.isSuccess()){
+            channel = bootstrap.connect(host, port).sync().channel();
+            /*if(future.isSuccess()){
                 channel = future.channel();
             } else {
                 LOGGER.error("Couldn't connect to server " + future.isSuccess());
-            }
+            }*/
             LOGGER.info("Client connected " + channel.isActive());
 
         } catch (Exception e) {
@@ -71,24 +71,26 @@ public class NettyClient {
         try {
             HttpRequest request = createRequest(new URI(uri));
             ChannelFuture future = channel.writeAndFlush(request);
-            System.out.println("=====>" + future.isDone());
+            System.out.println("=====>" + future.sync());
         } catch (Exception e) {
-            LOGGER.debug("Error occurred in request {} ", e);
+            LOGGER.error("Error occurred in request {} ", e);
         }
         return true;
     }
 
 
     private static HttpRequest createRequest(URI uri) {
-        /*String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
+        String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
         if (StringUtils.isNotBlank(uri.getRawQuery())) {
             url += "?" + uri.getRawQuery();
-        }*/
+        }
 //        System.out.println("url " + url);
-        HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://127.0.0.1:8082/hello");
+        HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
         request.headers().add(Names.HOST, uri.getHost()+":"+uri.getPort());
         request.headers().add(Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         request.headers().add(Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
+        System.out.println("======request===");
+        System.out.println("======request===" + request);
         return request;
     }
 
@@ -98,12 +100,16 @@ public class NettyClient {
      */
     public void shutdown() {
         LOGGER.info("Stopping Netty Http Client");
-        channel.close();
+        try {
+            channel.closeFuture().sync();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         EventLoopGroup group = bootstrap.group();
         if (group != null) {
             group.shutdownGracefully(0, 10, TimeUnit.SECONDS);
             if (!group.isTerminated()) {
-                group.shutdownNow();
+                group.shutdownGracefully();
             }
         }
         LOGGER.info("Stopped Netty Http Client");

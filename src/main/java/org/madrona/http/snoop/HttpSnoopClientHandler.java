@@ -27,19 +27,6 @@ public class HttpSnoopClientHandler extends SimpleChannelInboundHandler<HttpObje
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
 
-            System.err.println("STATUS: " + response.getStatus());
-            System.err.println("VERSION: " + response.getProtocolVersion());
-            System.err.println();
-
-            if (!response.headers().isEmpty()) {
-                for (String name: response.headers().names()) {
-                    for (String value: response.headers().getAll(name)) {
-                        System.err.println("HEADER: " + name + " = " + value);
-                    }
-                }
-                System.err.println();
-            }
-
             if (HttpHeaders.isTransferEncodingChunked(response)) {
                 System.err.println("CHUNKED CONTENT {");
             } else {
@@ -54,7 +41,6 @@ public class HttpSnoopClientHandler extends SimpleChannelInboundHandler<HttpObje
 
             if (content instanceof LastHttpContent) {
                 System.err.println("} END OF CONTENT");
-//                ctx.close();
             }
         }
     }

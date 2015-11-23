@@ -23,6 +23,8 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.Map;
@@ -35,12 +37,15 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> {
 
+    private static final Logger LOGGER = LogManager.getLogger(HttpSnoopServerHandler.class);
+
     private HttpRequest request;
     /** Buffer that stores the response content */
     private final StringBuilder buf = new StringBuilder();
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
+        System.out.println("channel read completed..");
         ctx.flush();
     }
 
@@ -49,19 +54,19 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
         if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
 
-      /*      if (HttpHeaders.is100ContinueExpected(request)) {
+            if (HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
-            }*/
+            }
 
             buf.setLength(0);
-            buf.append("WELCOME TO THE WILD WILD WEB SERVER\r\n");
+    /*        buf.append("WELCOME TO THE WILD WILD WEB SERVER\r\n");
             buf.append("===================================\r\n");
 
             buf.append("VERSION: ").append(request.getProtocolVersion()).append("\r\n");
             buf.append("HOSTNAME: ").append(HttpHeaders.getHost(request, "unknown")).append("\r\n");
-            buf.append("REQUEST_URI: ").append(request.getUri()).append("\r\n\r\n");
+            buf.append("REQUEST_URI: ").append(request.getUri()).append("\r\n\r\n");*/
 
-            HttpHeaders headers = request.headers();
+        /*    HttpHeaders headers = request.headers();
             if (!headers.isEmpty()) {
                 for (Entry<String, String> h: headers) {
                     String key = h.getKey();
@@ -69,7 +74,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
                     buf.append("HEADER: ").append(key).append(" = ").append(value).append("\r\n");
                 }
                 buf.append("\r\n");
-            }
+            }*/
 
             QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri());
             Map<String, List<String>> params = queryStringDecoder.parameters();
@@ -84,7 +89,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
                 buf.append("\r\n");
             }
 
-            appendDecoderResult(buf, request);
+//            appendDecoderResult(buf, request);
         }
 
         if (msg instanceof HttpContent) {
@@ -95,7 +100,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
                 buf.append("CONTENT: ");
                 buf.append(content.toString(CharsetUtil.UTF_8));
                 buf.append("\r\n");
-                appendDecoderResult(buf, request);
+//                appendDecoderResult(buf, request);
             }
 
             if (msg instanceof LastHttpContent) {
@@ -121,7 +126,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
         }
     }
 
-    private static void appendDecoderResult(StringBuilder buf, HttpObject o) {
+    /*private static void appendDecoderResult(StringBuilder buf, HttpObject o) {
         DecoderResult result = o.getDecoderResult();
         if (result.isSuccess()) {
             return;
@@ -130,7 +135,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
         buf.append(".. WITH DECODER FAILURE: ");
         buf.append(result.cause());
         buf.append("\r\n");
-    }
+    }*/
 
     private boolean writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
         // Decide whether to close the connection or not.

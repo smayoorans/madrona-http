@@ -12,8 +12,6 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * Netty Http Server which receives the http requests.
- *
- * @author Mayooran
  */
 public class NettyServer {
 
@@ -32,15 +30,16 @@ public class NettyServer {
 
     public boolean start() {
         LOGGER.info("Starting the HTTP Server on port [{}]", port);
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
-            EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-            EventLoopGroup workerGroup = new NioEventLoopGroup();
+            // Configure the server.
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ServerInitializer());
 
-            channel = bootstrap.bind(port).channel();
+            channel = bootstrap.bind(port).sync().channel();
             LOGGER.info("Server bound on port [{}]", port);
             return true;
         } catch (Exception e) {
@@ -53,7 +52,7 @@ public class NettyServer {
     public void shutdown() {
         try {
             LOGGER.info("Stopping http server, which is running on port [{}]", port);
-            channel.close();
+            channel.closeFuture().sync();
             bootstrap.group().shutdownGracefully();
             LOGGER.info("Stopped http server, which was running on port [{}]", port);
         } catch (Exception ex) {

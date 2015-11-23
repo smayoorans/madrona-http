@@ -32,9 +32,15 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
     private final StringBuilder buf = new StringBuilder();
 
     @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) {
+        System.out.println("channel read completed..");
+//        ctx.flush();
+    }
+
+    @Override
     protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
         LOGGER.info("Request received {}" + msg.getClass());
-        /*if (msg instanceof HttpRequest) {
+        if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
 
             if (HttpHeaders.is100ContinueExpected(request)) {
@@ -107,7 +113,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
                     ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
                 }
             }
-        }*/
+        }
 
     }
 
@@ -139,7 +145,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
             response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         }
         // Write the response.
-        ctx.writeAndFlush(response);
+        ctx.write(response);
 
         return keepAlive;
     }

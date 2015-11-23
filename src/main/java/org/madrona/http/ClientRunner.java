@@ -18,15 +18,27 @@ public class ClientRunner {
         NettyClient client = new NettyClient();
         client.init(HOST, PORT);
         Thread.sleep(2000);
-        ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(2);
+//        ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(2);
 
-        executorService.scheduleAtFixedRate(() -> {
+   /*     executorService.scheduleAtFixedRate(() -> {
             client.send("http://" + HOST + ":" + PORT + "/hello");
-        }, 1000, 2000, TimeUnit.MILLISECONDS);
+        }, 1000, 2000, TimeUnit.MILLISECONDS);*/
+
+        client.send("http://" + HOST + ":" + PORT );
+        Thread.sleep(100l);
+
+        client.send("http://" + HOST + ":" + PORT );
+        Thread.sleep(100l);
+
+
+        client.send("http://" + HOST + ":" + PORT);
+        Thread.sleep(100l);
+
+
 
         Thread.sleep(10000l);
 
-        executorService.shutdown();
+//        executorService.shutdown();
         client.shutdown();
     }
 }

@@ -23,7 +23,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
         LOGGER.info("Channel0 Reading message {} ", msg.getClass());
-        /*if (msg instanceof HttpResponse) {
+        if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
 
             System.err.println("STATUS: " + response.getStatus());
@@ -53,9 +53,9 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
 
             if (content instanceof LastHttpContent) {
                 System.err.println("} END OF CONTENT");
-                ctx.close();
+//                ctx.close();
             }
-        }*/
+        }
 
     }
 
