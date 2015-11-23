@@ -1,4 +1,19 @@
-package org.madrona.http.server;
+/*
+ * Copyright 2012 The Netty Project
+ *
+ * The Netty Project licenses this file to you under the Apache License,
+ * version 2.0 (the "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at:
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+package org.madrona.http.snoop;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -8,38 +23,34 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
-/**
- * Http Server Listener
- */
-public class ServerHandler extends SimpleChannelInboundHandler<Object> {
-
-    private static final Logger LOGGER = LogManager.getLogger(ServerHandler.class);
+public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private HttpRequest request;
     /** Buffer that stores the response content */
     private final StringBuilder buf = new StringBuilder();
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-        LOGGER.info("Request received {}" + msg.getClass());
-        /*if (msg instanceof HttpRequest) {
+    public void channelReadComplete(ChannelHandlerContext ctx) {
+        ctx.flush();
+    }
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+        if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
 
             if (HttpHeaders.is100ContinueExpected(request)) {
-                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, CONTINUE);
-                ctx.write(response);
+                send100Continue(ctx);
             }
 
             buf.setLength(0);
@@ -52,7 +63,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
             HttpHeaders headers = request.headers();
             if (!headers.isEmpty()) {
-                for (Map.Entry<String, String> h: headers) {
+                for (Entry<String, String> h: headers) {
                     String key = h.getKey();
                     String value = h.getValue();
                     buf.append("HEADER: ").append(key).append(" = ").append(value).append("\r\n");
@@ -63,7 +74,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
             QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri());
             Map<String, List<String>> params = queryStringDecoder.parameters();
             if (!params.isEmpty()) {
-                for (Map.Entry<String, List<String>> p: params.entrySet()) {
+                for (Entry<String, List<String>> p: params.entrySet()) {
                     String key = p.getKey();
                     List<String> vals = p.getValue();
                     for (String val : vals) {
@@ -107,8 +118,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
                     ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
                 }
             }
-        }*/
-
+        }
     }
 
     private static void appendDecoderResult(StringBuilder buf, HttpObject o) {
@@ -136,14 +146,36 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
             // Add 'Content-Length' header only for a keep-alive connection.
             response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
             // Add keep alive header as per:
+            // - http://www.w3.org/Protocols/HTTP/1.1/draft-ietf-http-v11-spec-01.html#Connection
             response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         }
+
+        // Encode the cookie.
+        String cookieString = request.headers().get(COOKIE);
+        if (cookieString != null) {
+            Set<Cookie> cookies = CookieDecoder.decode(cookieString);
+            if (!cookies.isEmpty()) {
+                // Reset the cookies if necessary.
+                for (Cookie cookie: cookies) {
+                    response.headers().add(SET_COOKIE, ServerCookieEncoder.encode(cookie));
+                }
+            }
+        } else {
+            // Browser sent no cookie.  Add some.
+            response.headers().add(SET_COOKIE, ServerCookieEncoder.encode("key1", "value1"));
+            response.headers().add(SET_COOKIE, ServerCookieEncoder.encode("key2", "value2"));
+        }
+
         // Write the response.
-        ctx.writeAndFlush(response);
+        ctx.write(response);
 
         return keepAlive;
     }
 
+    private static void send100Continue(ChannelHandlerContext ctx) {
+        FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, CONTINUE);
+        ctx.write(response);
+    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {

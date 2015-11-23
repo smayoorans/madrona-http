@@ -10,12 +10,13 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.HttpHeaders.Names;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -23,10 +24,6 @@ import java.util.concurrent.TimeUnit;
 public class NettyClient {
 
     private static final Logger LOGGER = LogManager.getLogger(NettyClient.class);
-
-    private static final int PORT = 8080;
-
-    private static final String HOST = "localhost";
 
     private Bootstrap bootstrap;
 
@@ -36,27 +33,32 @@ public class NettyClient {
 
     private ResponseNotifier responseNotifier;
 
-    public void init() {
+    public void init(final String host, final int port) {
         LOGGER.info("Initializing Netty Http Client");
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
         EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
 
         try {
             bootstrap = new Bootstrap();
-            bootstrap.option(ChannelOption.TCP_NODELAY, true);
+  /*          bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000);
             if (timeoutInMillis != 0) {
                 bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutInMillis);
             }
-
-
+*/
             bootstrap.group(workerGroup)
                     .channel(NioSocketChannel.class)
+                    .handler(new LoggingHandler(LogLevel.DEBUG))
                     .handler(new ClientInitializer(responseNotifier));
 
             /** Make the connection attempt */
-            channel = bootstrap.connect(HOST, PORT).channel();
-            LOGGER.info("Client connected " + channel.isOpen());
+            ChannelFuture future = bootstrap.connect(host, port).sync();
+            if(future.isSuccess()){
+                channel = future.channel();
+            } else {
+                LOGGER.error("Couldn't connect to server " + future.isSuccess());
+            }
+            LOGGER.info("Client connected " + channel.isActive());
 
         } catch (Exception e) {
             LOGGER.error("Error occurred while binding port [{}] ", e);
@@ -68,7 +70,8 @@ public class NettyClient {
         LOGGER.info("Sending http request [{}] ", uri);
         try {
             HttpRequest request = createRequest(new URI(uri));
-            channel.writeAndFlush(request);
+            ChannelFuture future = channel.writeAndFlush(request);
+            System.out.println("=====>" + future.isDone());
         } catch (Exception e) {
             LOGGER.debug("Error occurred in request {} ", e);
         }
@@ -77,13 +80,14 @@ public class NettyClient {
 
 
     private static HttpRequest createRequest(URI uri) {
-        String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
+        /*String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
         if (StringUtils.isNotBlank(uri.getRawQuery())) {
             url += "?" + uri.getRawQuery();
-        }
-        HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
-        request.headers().add(Names.HOST, uri.getHost());
-        request.headers().add(Names.CONNECTION, HttpHeaders.Values.CLOSE);
+        }*/
+//        System.out.println("url " + url);
+        HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "http://127.0.0.1:8082/hello");
+        request.headers().add(Names.HOST, uri.getHost()+":"+uri.getPort());
+        request.headers().add(Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         request.headers().add(Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
         return request;
     }

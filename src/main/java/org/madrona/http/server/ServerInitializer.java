@@ -8,7 +8,6 @@ import io.netty.handler.codec.http.HttpResponseEncoder;
 
 public class ServerInitializer extends ChannelInitializer<SocketChannel> {
 
-
     @Override
     protected void initChannel(SocketChannel socketChannel) throws Exception {
         ChannelPipeline p = socketChannel.pipeline();

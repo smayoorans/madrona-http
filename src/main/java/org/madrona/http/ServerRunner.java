@@ -15,24 +15,20 @@ public class ServerRunner {
 
     private static final Logger LOGGER = LogManager.getLogger(ServerRunner.class);
 
-    private static final int PORT = 8080;
-
-    private NettyServer server;
+    private static final int PORT = 8082;
 
     public static void main(String[] args) {
 
-        ServerRunner serverRunner = new ServerRunner();
+        NettyServer server = new NettyServer(PORT);
 
-        serverRunner.server = new NettyServer(PORT);
-
-        if (!serverRunner.server.start()) {
+        if (!server.start()) {
             return;
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                serverRunner.server.shutdown();
+                server.shutdown();
             }
         });
     }

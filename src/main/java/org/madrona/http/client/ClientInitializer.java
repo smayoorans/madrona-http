@@ -23,12 +23,6 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast(new HttpContentDecompressor());
         pipeline.addLast(new ResponseHandler(responseNotifier));
 
-        /**
-         --(ByteBuf)--> HttpRequestDecoder --(HttpObject)-->
-         HttpObjectAggregator --(FullHttpRequest)--> RequestDecoder* --(Request*)-->
-         FormPayloadDecoder* --(FullDecodedRequest*)--> DefaultHandler* --(Response*)-->
-         DefaultExceptionHandler*
-         */
     }
 
 }

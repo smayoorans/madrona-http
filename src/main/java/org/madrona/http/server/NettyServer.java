@@ -19,10 +19,6 @@ public class NettyServer {
 
     private static final Logger LOGGER = LogManager.getLogger(NettyServer.class);
 
-    private EventLoopGroup bossGroup;
-
-    private EventLoopGroup workerGroup;
-
     private ServerBootstrap bootstrap;
 
     private int port = 8080;
@@ -31,17 +27,17 @@ public class NettyServer {
 
     public NettyServer(final int port) {
         this.port = port;
-        this.bossGroup = new NioEventLoopGroup(1);
-        this.workerGroup = new NioEventLoopGroup();
         this.bootstrap = new ServerBootstrap();
     }
 
     public boolean start() {
         LOGGER.info("Starting the HTTP Server on port [{}]", port);
         try {
+            EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+            EventLoopGroup workerGroup = new NioEventLoopGroup();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.DEBUG))
+                    .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ServerInitializer());
 
             channel = bootstrap.bind(port).channel();
@@ -57,11 +53,11 @@ public class NettyServer {
     public void shutdown() {
         try {
             LOGGER.info("Stopping http server, which is running on port [{}]", port);
-            channel.closeFuture();
+            channel.close();
             bootstrap.group().shutdownGracefully();
             LOGGER.info("Stopped http server, which was running on port [{}]", port);
         } catch (Exception ex) {
-            LOGGER.error("Error occurred while stopping the server");
+            LOGGER.error("Error occurred while stopping the server {} ", ex);
         }
     }
 }
