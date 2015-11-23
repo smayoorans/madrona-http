@@ -73,12 +73,6 @@ public final class HttpSnoopClient {
             request.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.CLOSE);
             request.headers().set(HttpHeaders.Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
 
-            // Set some example cookies.
-            request.headers().set(
-                    HttpHeaders.Names.COOKIE,
-                    ClientCookieEncoder.encode(
-                            new DefaultCookie("my-cookie", "foo"),
-                            new DefaultCookie("another-cookie", "bar")));
 
             // Send the HTTP request.
             ch.writeAndFlush(request);
