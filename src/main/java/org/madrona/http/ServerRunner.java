@@ -13,8 +13,6 @@ import org.madrona.http.server.NettyServer;
 
 public class ServerRunner {
 
-    private static final Logger LOGGER = LogManager.getLogger(ServerRunner.class);
-
     private static final int PORT = 8082;
 
     public static void main(String[] args) {

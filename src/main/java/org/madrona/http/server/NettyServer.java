@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.madrona.http.common.MessageCounter;
 
 /**
- * Netty Http Server which receives the http requests.
+ * Netty Http Server which receives the http requests and send back http responses.
  */
 public class NettyServer {
 
@@ -39,10 +39,13 @@ public class NettyServer {
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.DEBUG))
                     .childHandler(new ServerInitializer());
-
             channel = bootstrap.bind(port).sync().channel();
-            LOGGER.info("Server bound on port [{}]", port);
-            return true;
+            if (channel.isOpen()) {
+                LOGGER.info("Server bound on port [{}]", port);
+                return true;
+            }
+            LOGGER.info("Error occurred while binding port [{}]", port);
+            return false;
         } catch (Exception e) {
             LOGGER.error("Error occurred while starting the server on port [{}], [{}]", port, e);
             return false;

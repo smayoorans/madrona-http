@@ -33,7 +33,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-//        System.out.println("channel read completed..");
         ctx.flush();
     }
 
@@ -49,11 +48,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
             }
 
             buf.setLength(0);
-            buf.append("WELCOME TO THE WILD WILD WEB SERVER\r\n");
-            buf.append("===================================\r\n");
-
-            buf.append("VERSION: ").append(request.getProtocolVersion()).append("\r\n");
-            buf.append("HOSTNAME: ").append(HttpHeaders.getHost(request, "unknown")).append("\r\n");
             buf.append("REQUEST_URI: ").append(request.getUri()).append("\r\n\r\n");
 
             HttpHeaders headers = request.headers();
@@ -153,13 +147,13 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
     @Override
     public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("Channel {} unregistered from the system {}", ctx.channel());
+        LOGGER.info("Channel {} unregistered from the system", ctx.channel());
         super.channelUnregistered(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        LOGGER.error("Error occurred in netty server", cause.getCause());
+        LOGGER.error("Error occurred in http netty server", cause.getCause());
         ctx.close();
     }
 }
