@@ -21,23 +21,24 @@ public class ClientRunner {
     private static final AtomicLong readMessages = new AtomicLong(0);
 
     public static void main(String[] args) throws InterruptedException {
-        // Initializing http client
         NettyClient client = new NettyClient();
         client.setResponseNotifier(new ResponseNotifierImpl());
-        client.init(HOST, PORT);
+        client.setHost(HOST);
+        client.setPort(PORT);
+        client.init();
         Thread.sleep(2000);
         ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(5);
 
         executorService.scheduleAtFixedRate(() -> {
             writtenMessages.incrementAndGet();
             client.send("http://" + HOST + ":" + PORT + "/hello");
-        }, 1000, 5000, TimeUnit.MICROSECONDS);
+        }, 1000_000, 1000_000, TimeUnit.MICROSECONDS);
 
         executorService.scheduleAtFixedRate(() -> {
             System.out.println("sent=" + writtenMessages.getAndSet(0) + "> received=" + readMessages.getAndSet(0));
         }, 1000, 1000, TimeUnit.MILLISECONDS);
 
-        Thread.sleep(10000l);
+        Thread.sleep(60000l);
 
         executorService.shutdown();
 

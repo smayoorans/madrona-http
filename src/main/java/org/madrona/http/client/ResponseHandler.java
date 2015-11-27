@@ -36,4 +36,10 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
         responseNotifier.networkErrorOccurred(cause);
         super.exceptionCaught(ctx, cause);
     }
+
+    @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        LOGGER.error("Channel unregistered from the system " + ctx.channel());
+        super.channelUnregistered(ctx);
+    }
 }

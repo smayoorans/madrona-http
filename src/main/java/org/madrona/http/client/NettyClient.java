@@ -2,30 +2,20 @@ package org.madrona.http.client;
 
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.ChannelGroupFuture;
-import io.netty.channel.group.ChannelGroupFutureListener;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.HttpHeaders.Names;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.madrona.http.common.MessageCounter;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,14 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 
 public class NettyClient {
 
     private static final Logger LOGGER = LogManager.getLogger(NettyClient.class);
 
     private Bootstrap bootstrap;
-
-    private Channel channel;
 
     private List<ChannelContainer> channelContainerList;
 
@@ -52,12 +42,33 @@ public class NettyClient {
 
     private int numberOfConnections;
 
-    public void init(final String host, final int port) {
+    private ScheduledExecutorService channelConnectionChecker;
+
+    private String host;
+    private int port;
+    private int initialDelay = 3000;
+
+    private static HttpRequest createRequest(URI uri) {
+        String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
+        if (StringUtils.isNotBlank(uri.getRawQuery())) {
+            url += "?" + uri.getRawQuery();
+        }
+        HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
+        request.headers().add(Names.HOST, uri.getHost() + ":" + uri.getPort());
+        request.headers().add(Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+        request.headers().add(Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
+        return request;
+    }
+
+    public void init() {
         LOGGER.info("Initializing Netty Http Client");
-        int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
+
         roundRobbinCounter = new AtomicInteger(1);
         channelContainerList = new ArrayList<>();
-        numberOfConnections = 20;
+        numberOfConnections = 5;
+        channelConnectionChecker = Executors.newScheduledThreadPool(1);
+
+        int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
         EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
 
         try {
@@ -69,36 +80,63 @@ public class NettyClient {
             if (timeoutInMillis != 0) {
                 bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutInMillis);
             }
+
             bootstrap.group(workerGroup)
                     .channel(NioSocketChannel.class)
                     .handler(new ClientInitializer(responseNotifier));
 
-            createChannelConnections(host, port);
+            establishConnections(numberOfConnections);
         } catch (Exception e) {
             LOGGER.error("Error occurred while binding port [{}] ", e);
         }
 
     }
 
-    public void createChannelConnections(final String host, final int port){
-        /** Make the connection attempt */
-        for (int i = 0 ; i < numberOfConnections ; i++){
-            try {
-                channel = bootstrap.connect(host, port).sync().channel();
-                String channelId = "channel-".concat(String.valueOf(System.currentTimeMillis()).concat(String.valueOf(i + 1)));
-                ChannelContainer channelContainer = new ChannelContainer(channelId, channel);
-                channelContainerList.add(channelContainer);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            /*try {
-                Thread.sleep(1000l);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }*/
+    private void establishConnections(int numberOfConnections) {
+        LOGGER.info("Establishing connections up to the count [{}]", numberOfConnections);
+        AtomicInteger pendingCount = new AtomicInteger(numberOfConnections);
+        for (int i = 0; i < numberOfConnections; i++) {
+            String channelId = "netty-channel-".concat(String.valueOf(System.currentTimeMillis())).concat(String.valueOf(i + 1));
+            bootstrapConnection(channelId, pendingCount);
         }
+    }
 
+    public void bootstrapConnection(final String channelId, final AtomicInteger pendingCount) {
+        /** Make the connection attempt */
+        LOGGER.info("Bootstrapping connection for " + channelId);
+        this.bootstrap.connect(host, port).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (!future.isSuccess()) {
+                    LOGGER.error("Netty channel connection attempts failed {} ", channelId);
+                    future.channel().close();
+                } else {
+                    Channel channel = future.channel();
+                    ChannelContainer channelContainer = new ChannelContainer(channelId, channel);
+                    channelContainerList.add(channelContainer);
+                    LOGGER.info("Netty channel connection attempt succeeded");
+                }
+                if (pendingCount.decrementAndGet() < 1) {
+                    LOGGER.info("Scheduling next connection checker jop");
+                    scheduleNextConnectionCheck();
+                }
 
+            }
+        });
+    }
+
+    private void scheduleNextConnectionCheck() {
+        channelConnectionChecker.schedule(() -> {
+            int missingConnectionCount = 0;
+            missingConnectionCount = numberOfConnections - channelContainerList.size();
+            if (missingConnectionCount > 0) {
+                LOGGER.info("Missing connection count : [{}]", missingConnectionCount);
+                establishConnections(missingConnectionCount);
+            } else {
+                scheduleNextConnectionCheck();
+            }
+
+        }, initialDelay, MILLISECONDS);
     }
 
     public boolean send(final String uri) {
@@ -122,26 +160,13 @@ public class NettyClient {
         }
     }
 
-
-    private static HttpRequest createRequest(URI uri) {
-        String url = StringUtils.isBlank(uri.getRawPath()) ? "/" : uri.getRawPath();
-        if (StringUtils.isNotBlank(uri.getRawQuery())) {
-            url += "?" + uri.getRawQuery();
-        }
-        HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
-        request.headers().add(Names.HOST, uri.getHost()+":"+uri.getPort());
-        request.headers().add(Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
-        request.headers().add(Names.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
-        return request;
-    }
-
-
     /**
      * Shut down any running connections
      */
     public void shutdown() {
         LOGGER.info("Stopping Netty Http Client");
-        ChannelFuture closeFuture = channel.close();
+        channelConnectionChecker.shutdown();
+        channelContainerList.forEach(channelContainer -> channelContainer.channel.close());
         EventLoopGroup group = bootstrap.group();
         if (group != null) {
             group.shutdownGracefully(0, 10, TimeUnit.SECONDS);
@@ -160,15 +185,16 @@ public class NettyClient {
         this.responseNotifier = responseNotifier;
     }
 
-    public static class TF implements ThreadFactory {
-        private int count = 0;
+    public void setHost(String host) {
+        this.host = host;
+    }
 
-        @Override
-        public Thread newThread(Runnable runnable) {
-            Thread thread = new Thread(runnable, "HttpClient event loop" + ++count);
-            thread.setDaemon(true);
-            return thread;
-        }
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public void setInitialDelay(int initialDelay) {
+        this.initialDelay = initialDelay;
     }
 
     /**
@@ -185,7 +211,18 @@ public class NettyClient {
             return null;
         }
         int nextIndex = count % size;
-        return  channelContainerList.get(nextIndex);
+        return channelContainerList.get(nextIndex);
+    }
+
+    public static class TF implements ThreadFactory {
+        private int count = 0;
+
+        @Override
+        public Thread newThread(Runnable runnable) {
+            Thread thread = new Thread(runnable, "HttpClient event loop" + ++count);
+            thread.setDaemon(true);
+            return thread;
+        }
     }
 
     private static class ChannelContainer {
