@@ -57,11 +57,13 @@ public class NettyClient {
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
         roundRobbinCounter = new AtomicInteger(1);
         channelContainerList = new ArrayList<>();
-        numberOfConnections = 5;
+        numberOfConnections = 20;
         EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
 
         try {
             bootstrap = new Bootstrap();
+            bootstrap.option(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
+            bootstrap.option(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
             bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
             if (timeoutInMillis != 0) {
@@ -89,11 +91,11 @@ public class NettyClient {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            try {
+            /*try {
                 Thread.sleep(1000l);
             } catch (InterruptedException e) {
                 e.printStackTrace();
-            }
+            }*/
         }
 
 
