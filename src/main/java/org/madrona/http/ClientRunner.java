@@ -31,18 +31,18 @@ public class ClientRunner {
         executorService.scheduleAtFixedRate(() -> {
             writtenMessages.incrementAndGet();
             client.send("http://" + HOST + ":" + PORT + "/hello");
-        }, 1000, 100000, TimeUnit.MICROSECONDS);
+        }, 1000, 5000, TimeUnit.MICROSECONDS);
 
         executorService.scheduleAtFixedRate(() -> {
             System.out.println("sent=" + writtenMessages.getAndSet(0) + "> received=" + readMessages.getAndSet(0));
         }, 1000, 1000, TimeUnit.MILLISECONDS);
 
-        Thread.sleep(50000l);
+        Thread.sleep(10000l);
 
         executorService.shutdown();
 
-        Thread.sleep(1000l);
         client.shutdown();
+        Thread.sleep(1000l);
     }
 
     private static class ResponseNotifierImpl implements ResponseNotifier {

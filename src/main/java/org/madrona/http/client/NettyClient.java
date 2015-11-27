@@ -6,6 +6,9 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.ChannelGroupFuture;
+import io.netty.channel.group.ChannelGroupFutureListener;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
@@ -18,8 +21,17 @@ import org.apache.logging.log4j.Logger;
 import org.madrona.http.common.MessageCounter;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class NettyClient {
@@ -30,19 +42,28 @@ public class NettyClient {
 
     private Channel channel;
 
+    private List<ChannelContainer> channelContainerList;
+
     private int timeoutInMillis = 0;
 
     private ResponseNotifier responseNotifier;
 
+    private AtomicInteger roundRobbinCounter;
+
+    private int numberOfConnections;
+
     public void init(final String host, final int port) {
         LOGGER.info("Initializing Netty Http Client");
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;
+        roundRobbinCounter = new AtomicInteger(1);
+        channelContainerList = new ArrayList<>();
+        numberOfConnections = 5;
         EventLoopGroup workerGroup = new NioEventLoopGroup(workerThreads, new TF());
 
         try {
             bootstrap = new Bootstrap();
             bootstrap.option(ChannelOption.TCP_NODELAY, true);
-            bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000);
+            bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
             if (timeoutInMillis != 0) {
                 bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutInMillis);
             }
@@ -50,18 +71,31 @@ public class NettyClient {
                     .channel(NioSocketChannel.class)
                     .handler(new ClientInitializer(responseNotifier));
 
-            /** Make the connection attempt */
-            channel = bootstrap.connect(host, port).sync().channel();
-            /*if(future.isSuccess()){
-                channel = future.channel();
-            } else {
-                LOGGER.error("Couldn't connect to server " + future.isSuccess());
-            }*/
-            LOGGER.info("Client connected " + channel.isActive());
-
+            createChannelConnections(host, port);
         } catch (Exception e) {
             LOGGER.error("Error occurred while binding port [{}] ", e);
         }
+
+    }
+
+    public void createChannelConnections(final String host, final int port){
+        /** Make the connection attempt */
+        for (int i = 0 ; i < numberOfConnections ; i++){
+            try {
+                channel = bootstrap.connect(host, port).sync().channel();
+                String channelId = "channel-".concat(String.valueOf(System.currentTimeMillis()).concat(String.valueOf(i + 1)));
+                ChannelContainer channelContainer = new ChannelContainer(channelId, channel);
+                channelContainerList.add(channelContainer);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(1000l);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
 
     }
 
@@ -69,13 +103,21 @@ public class NettyClient {
         LOGGER.debug("Sending http request [{}] ", uri);
         try {
             HttpRequest request = createRequest(new URI(uri));
-            channel.writeAndFlush(request);
-//            ChannelFuture future = channel.writeAndFlush(request);
-//            System.out.println("=====>" + future.sync().isSuccess());
+            ChannelContainer channelContainer = getNextChannel();
+            if (channelContainer == null) {
+                LOGGER.debug("No active channel found for the request [{}]", request);
+                return false;
+            }
+            if (channelContainer.channel.isActive() && channelContainer.channel.isOpen()) {
+                channelContainer.channel.writeAndFlush(request);
+                return true;
+            }
+            LOGGER.debug("Selected channel [{}] is not ready to send messages", channelContainer.id);
+            return false;
         } catch (Exception e) {
             LOGGER.error("Error occurred in request {} ", e);
+            return false;
         }
-        return true;
     }
 
 
@@ -97,11 +139,7 @@ public class NettyClient {
      */
     public void shutdown() {
         LOGGER.info("Stopping Netty Http Client");
-        try {
-            channel.closeFuture().sync();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        ChannelFuture closeFuture = channel.close();
         EventLoopGroup group = bootstrap.group();
         if (group != null) {
             group.shutdownGracefully(0, 10, TimeUnit.SECONDS);
@@ -129,6 +167,60 @@ public class NettyClient {
             thread.setDaemon(true);
             return thread;
         }
+    }
+
+    /**
+     * <p>
+     * Returns the next channel. The index is calculated in a round robin fashion.
+     * </p>
+     *
+     * @return Channel
+     */
+    private ChannelContainer getNextChannel() {
+        int count = Math.abs(roundRobbinCounter.incrementAndGet());
+        int size = channelContainerList.size();
+        if (size < 1) {
+            return null;
+        }
+        int nextIndex = count % size;
+        return  channelContainerList.get(nextIndex);
+    }
+
+    private static class ChannelContainer {
+
+        String id;
+
+        Channel channel;
+
+        AtomicBoolean isUsable = new AtomicBoolean(false);
+
+//        Queue<RequestDetail> transactionIdQueue;
+
+        Lock channelLock;
+
+        public ChannelContainer(String id, Channel channel) {
+            this.id = id;
+            this.channel = channel;
+            this.channelLock = new ReentrantLock();
+        }
+
+        public boolean isChannelExpired(long currentTime, int httpRequestTimeout) {
+           /* RequestDetail requestDetail = transactionIdQueue.peek();
+            boolean isChannelExpired = false;
+            if (requestDetail != null) {
+                isChannelExpired = (currentTime - requestDetail.sentTime > httpRequestTimeout);
+            }
+            return isChannelExpired;*/
+            return true;
+        }
+
+   /*     public Optional<RequestDetail> getNextTransactionId() {
+            return Optional.ofNullable(transactionIdQueue.poll());
+        }
+
+        public void putRequestDetail(String transactionId, HtocsMethodType methodType) {
+            transactionIdQueue.add(new RequestDetail(transactionId, methodType));
+        }*/
     }
 
 }
