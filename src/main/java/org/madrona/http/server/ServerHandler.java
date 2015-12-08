@@ -1,5 +1,6 @@
 package org.madrona.http.server;
 
+import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -10,9 +11,13 @@ import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.madrona.http.common.Circular;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
@@ -24,9 +29,7 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private static final Logger LOGGER = LogManager.getLogger(ServerHandler.class);
-    /**
-     * Buffer that stores the response content
-     */
+
     private final StringBuilder buf = new StringBuilder();
 
     private HttpRequest request;
@@ -42,66 +45,16 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
         if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
 
-            if (HttpHeaders.is100ContinueExpected(request)) {
-                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, CONTINUE);
-                ctx.write(response);
-            }
-
             buf.setLength(0);
             buf.append("REQUEST_URI: ").append(request.getUri()).append("\r\n\r\n");
-
-            HttpHeaders headers = request.headers();
-            if (!headers.isEmpty()) {
-                for (Map.Entry<String, String> h: headers) {
-                    String key = h.getKey();
-                    String value = h.getValue();
-                    buf.append("HEADER: ").append(key).append(" = ").append(value).append("\r\n");
-                }
-                buf.append("\r\n");
-            }
-
-            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri());
-            Map<String, List<String>> params = queryStringDecoder.parameters();
-            if (!params.isEmpty()) {
-                for (Map.Entry<String, List<String>> p: params.entrySet()) {
-                    String key = p.getKey();
-                    List<String> vals = p.getValue();
-                    for (String val : vals) {
-                        buf.append("PARAM: ").append(key).append(" = ").append(val).append("\r\n");
-                    }
-                }
-                buf.append("\r\n");
-            }
-
             appendDecoderResult(buf, request);
         }
 
         if (msg instanceof HttpContent) {
-            HttpContent httpContent = (HttpContent) msg;
-
-            ByteBuf content = httpContent.content();
-            if (content.isReadable()) {
-                buf.append("CONTENT: ");
-                buf.append(content.toString(CharsetUtil.UTF_8));
-                buf.append("\r\n");
-                appendDecoderResult(buf, request);
-            }
-
             if (msg instanceof LastHttpContent) {
                 buf.append("END OF CONTENT\r\n");
 
                 LastHttpContent trailer = (LastHttpContent) msg;
-                if (!trailer.trailingHeaders().isEmpty()) {
-                    buf.append("\r\n");
-                    for (String name: trailer.trailingHeaders().names()) {
-                        for (String value: trailer.trailingHeaders().getAll(name)) {
-                            buf.append("TRAILING HEADER: ");
-                            buf.append(name).append(" = ").append(value).append("\r\n");
-                        }
-                    }
-                    buf.append("\r\n");
-                }
-
                 if (!writeResponse(trailer, ctx)) {
                     // If keep-alive is off, close the connection once the content is fully written.
                     ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
@@ -123,37 +76,37 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     private boolean writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
-        // Decide whether to close the connection or not.
         boolean keepAlive = HttpHeaders.isKeepAlive(request);
-        // Build the response object.
         FullHttpResponse response = new DefaultFullHttpResponse(
-                HTTP_1_1, currentObj.getDecoderResult().isSuccess()? OK : BAD_REQUEST,
-                Unpooled.copiedBuffer(buf.toString(), CharsetUtil.UTF_8));
-
+                HTTP_1_1, currentObj.getDecoderResult().isSuccess() ? OK : BAD_REQUEST,
+                Unpooled.copiedBuffer("RESULT CODE=1", CharsetUtil.UTF_8));
         response.headers().set(CONTENT_TYPE, "text/plain; charset=UTF-8");
 
         if (keepAlive) {
-            // Add 'Content-Length' header only for a keep-alive connection.
             response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
-            // Add keep alive header as per:
             response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         }
         // Write the response.
-        ctx.write(response);
+        int delay = Circular.getInstance().nextDelay();
+        System.out.println("Delay [" + delay + "]");
+        ctx.executor().schedule((Runnable) () -> {
+            ctx.writeAndFlush(response);
+        }, delay, TimeUnit.SECONDS);
 
         return keepAlive;
     }
 
 
+
     @Override
     public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("Channel {} unregistered from the system", ctx.channel());
+//        LOGGER.info("Channel {} unregistered from the system", ctx.channel());
         super.channelUnregistered(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        LOGGER.error("Error occurred in http netty server", cause.getCause());
+//        LOGGER.error("Error occurred in http netty server", cause.getCause());
         ctx.close();
     }
 }

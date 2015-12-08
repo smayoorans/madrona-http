@@ -65,7 +65,7 @@ public class NettyClient {
 
         roundRobbinCounter = new AtomicInteger(1);
         channelContainerList = new ArrayList<>();
-        numberOfConnections = 5;
+        numberOfConnections = 2;
         channelConnectionChecker = Executors.newScheduledThreadPool(1);
 
         int workerThreads = Runtime.getRuntime().availableProcessors() * 4;

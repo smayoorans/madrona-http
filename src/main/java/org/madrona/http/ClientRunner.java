@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ClientRunner {
 
-    private static final int PORT = 8082;
+    private static final int PORT = 8083;
 
     private static final String HOST = "127.0.0.1";
 
@@ -32,7 +32,7 @@ public class ClientRunner {
         executorService.scheduleAtFixedRate(() -> {
             writtenMessages.incrementAndGet();
             client.send("http://" + HOST + ":" + PORT + "/hello");
-        }, 1000_000, 1000_000, TimeUnit.MICROSECONDS);
+        }, 1000_000, 1000, TimeUnit.MICROSECONDS);
 
         executorService.scheduleAtFixedRate(() -> {
             System.out.println("sent=" + writtenMessages.getAndSet(0) + "> received=" + readMessages.getAndSet(0));

@@ -1,7 +1,6 @@
 package org.madrona.http;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
 import org.madrona.http.server.NettyServer;
 
 
@@ -13,7 +12,7 @@ import org.madrona.http.server.NettyServer;
 
 public class ServerRunner {
 
-    private static final int PORT = 8082;
+    private static final int PORT = 8083;
 
     public static void main(String[] args) {
 
