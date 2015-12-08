@@ -8,7 +8,7 @@ import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.madrona.http.common.Circular;
+import org.madrona.http.common.DelayProvider;
 
 import java.util.concurrent.TimeUnit;
 
@@ -23,8 +23,6 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private static final Logger LOGGER = LogManager.getLogger(ServerHandler.class);
-
-
 
     private HttpRequest request;
 
@@ -41,8 +39,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
         }
         if (msg instanceof HttpContent) {
             if (msg instanceof LastHttpContent) {
-
-
                 LastHttpContent trailer = (LastHttpContent) msg;
                 if (!writeResponse(trailer, ctx)) {
                     // If keep-alive is off, close the connection once the content is fully written.
@@ -65,7 +61,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
             response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         }
         // Write the response.
-        int delay = Circular.getInstance().nextDelay();
+        int delay = DelayProvider.getInstance().nextDelay();
         ctx.executor().schedule((Runnable) () -> {
             ctx.writeAndFlush(response);
         }, delay, TimeUnit.SECONDS);

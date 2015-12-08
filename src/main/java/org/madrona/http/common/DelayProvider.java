@@ -4,17 +4,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class Circular {
+public class DelayProvider {
 
     private List<Integer> delayPatternIntList = new ArrayList<>(Arrays.asList(1, 4, 20));
 
     private int currentIndex = 0;
 
-    private static Circular instance;
+    private static DelayProvider instance;
 
-    public static synchronized Circular getInstance() {
+    public static synchronized DelayProvider getInstance() {
         if (instance == null) {
-            instance = new Circular();
+            instance = new DelayProvider();
         }
         return instance;
     }
