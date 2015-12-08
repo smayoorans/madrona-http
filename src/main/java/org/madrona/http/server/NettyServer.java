@@ -9,7 +9,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.madrona.http.common.MessageCounter;
+
 
 /**
  * Netty Http Server which receives the http requests and send back http responses.
@@ -39,6 +39,7 @@ public class NettyServer {
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.DEBUG))
                     .childHandler(new ServerInitializer());
+
             channel = bootstrap.bind(port).sync().channel();
             if (channel.isOpen()) {
                 LOGGER.info("Server bound on port [{}]", port);

@@ -1,26 +1,20 @@
 package org.madrona.http.server;
 
-import com.google.common.collect.Lists;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.madrona.http.common.Circular;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
-import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 /**
@@ -30,7 +24,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private static final Logger LOGGER = LogManager.getLogger(ServerHandler.class);
 
-    private final StringBuilder buf = new StringBuilder();
+
 
     private HttpRequest request;
 
@@ -43,16 +37,11 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
     protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
         LOGGER.debug("Request received [{}] into server ", msg.getClass());
         if (msg instanceof HttpRequest) {
-            HttpRequest request = this.request = (HttpRequest) msg;
-
-            buf.setLength(0);
-            buf.append("REQUEST_URI: ").append(request.getUri()).append("\r\n\r\n");
-            appendDecoderResult(buf, request);
+            this.request = (HttpRequest) msg;
         }
-
         if (msg instanceof HttpContent) {
             if (msg instanceof LastHttpContent) {
-                buf.append("END OF CONTENT\r\n");
+
 
                 LastHttpContent trailer = (LastHttpContent) msg;
                 if (!writeResponse(trailer, ctx)) {
@@ -62,17 +51,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
             }
         }
 
-    }
-
-    private static void appendDecoderResult(StringBuilder buf, HttpObject o) {
-        DecoderResult result = o.getDecoderResult();
-        if (result.isSuccess()) {
-            return;
-        }
-
-        buf.append(".. WITH DECODER FAILURE: ");
-        buf.append(result.cause());
-        buf.append("\r\n");
     }
 
     private boolean writeResponse(HttpObject currentObj, ChannelHandlerContext ctx) {
@@ -88,14 +66,12 @@ public class ServerHandler extends SimpleChannelInboundHandler<Object> {
         }
         // Write the response.
         int delay = Circular.getInstance().nextDelay();
-        System.out.println("Delay [" + delay + "]");
         ctx.executor().schedule((Runnable) () -> {
             ctx.writeAndFlush(response);
         }, delay, TimeUnit.SECONDS);
 
         return keepAlive;
     }
-
 
 
     @Override
